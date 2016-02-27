@@ -34,9 +34,17 @@ elseif auth_code then
   log.debug("requesting token for auth code: %s", auth_code)
 
   local token = get_or_fail(oauth.request_token('authorization_code', conf, auth_code))
-  cookies.add_token(token)
-
   local user = get_or_fail(httpc.get_for_json(conf.userinfo_url, token.access_token))
+
+  if conf.plugin then
+    local pre_authorize = require(conf.plugin).pre_authorize
+
+    if not util.is_empty(pre_authorize) then
+      pre_authorize(ngx, nginx, user, token);
+    end
+  end
+
+  cookies.add_token(token)
   cookies.add_username(user.username)
 
   log.info("authorized user '%s', redirecting to: %s", user.username, conf.success_uri)
