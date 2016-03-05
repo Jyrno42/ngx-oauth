@@ -33,19 +33,19 @@ if conf.plugin then
   plugin = require(conf.plugin)
 end
 
-local function trigger_before_access()
+local function trigger_before_access(tk)
   if plugin then
     local before_access = plugin.before_access
 
     if not util.is_empty(before_access) then
-      before_access(ngx, nginx, get_or_fail(httpc.get_for_json(conf.userinfo_url, access_token), access_token))
+      before_access(ngx, nginx, get_or_fail(httpc.get_for_json(conf.userinfo_url, tk), tk))
     end
   end
 end
 
 -- Cookie with access token found; set Authorization header and we're done.
 if access_token then
-  trigger_before_access()
+  trigger_before_access(access_token)
   write_auth_header(access_token)
 
 -- Cookie with refresh token found; refresh token and set Authorization header.
@@ -57,7 +57,7 @@ elseif cookies.get_refresh_token() then
       nginx.fail(503, 'Authorization server error: %s', err)
     end,
     function(token)
-      trigger_before_access()
+      trigger_before_access(token.access_token)
       cookies.add_token(token)
       write_auth_header(token.access_token)
     end,
